@@ -2,202 +2,149 @@
 
 <img src="NotchBuddy/Assets.xcassets/AppIcon.appiconset/icon_256x256.png" width="96" alt="Coucou icon">
 
-# Coucou
+# Coucou · masdevv edition 🎧✨
+### `coucou-by-1dimas`
 
-**A tiny friend that lives in your Mac's notch — or at the top of your screen on Windows and Linux — and keeps an eye on your AI coding agent sessions.**
+**A customized, cyberpunk-themed desktop dynamic island AI companion & developer HUD for Linux (and Windows/macOS).**
 
-Approve permissions, watch your agents work, drop a file, chat with Claude — all without leaving what you're doing.
+*Forked & supercharged by [@1dimas (masdevv)](https://github.com/1dimas) from the original [Coucou by Louis-CFM](https://github.com/Louis-CFM/coucou).*
 
-![macOS 15+](https://img.shields.io/badge/macOS-15%2B-black?logo=apple)
-![Windows 10/11](https://img.shields.io/badge/Windows-10%2F11-0078D4?logo=windows&logoColor=white)
-![Linux](https://img.shields.io/badge/Linux-AppImage%20%7C%20deb%20%7C%20rpm-FCC624?logo=linux&logoColor=black)
-![Swift 6](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)
-![SwiftUI](https://img.shields.io/badge/SwiftUI-native-0A84FF)
-![Tauri 2](https://img.shields.io/badge/Tauri-2-FFC131?logo=tauri&logoColor=black)
-![License: MIT](https://img.shields.io/badge/license-MIT-green)
-![GitHub stars](https://img.shields.io/github/stars/Louis-CFM/coucou?style=social)
-
-<img src="docs/media/demo.gif" width="760" alt="Coucou in action">
+[![Linux](https://img.shields.io/badge/Linux-Hyprland%20%7C%20Wayland%20%7C%20X11-FCC624?logo=linux&logoColor=black)](https://github.com/1dimas/coucou-by-1dimas)
+[![Windows 10/11](https://img.shields.io/badge/Windows-Tauri%20Ready-0078D4?logo=windows&logoColor=white)](https://github.com/1dimas/coucou-by-1dimas)
+[![Tauri 2](https://img.shields.io/badge/Tauri-2-FFC131?logo=tauri&logoColor=black)](https://tauri.app)
+[![Rust](https://img.shields.io/badge/Rust-Backend-dea584?logo=rust&logoColor=black)](https://www.rust-lang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Frontend-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 </div>
 
 ---
 
-## Why
+## 🚀 What is Coucou · masdevv edition?
 
-Some studios showed off gorgeous notch companions… and never let anyone use them.
-**Coucou is the open version.** Every line of code, every animation, every sound — free to use, read, fork and remix.
+Coucou adalah teman AI mungil (**Mochi**) yang hidup di bagian atas layar desktop kamu (Dynamic Island) untuk memantau sesi AI coding agents, notifikasi, dan status sistem secara real-time.
 
-Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch, waves hello, follows your cursor with its eyes, gets annoyed when you poke it (and dizzy if you insist), and tells you the moment Claude Code needs you.
+Di edisi **`coucou-by-1dimas`**, tampilannya dirombak total agar ramah developer, estetik cyberpunk, dan tidak lagi terlihat seperti template bawaan:
 
-## Features
+### ✨ Fitur Unggulan Edisi masdevv:
 
-- 🤖 **Claude Code, Cursor, Codex, Gemini CLI, Antigravity and other agents, live** — see every session in your notch: what it reads, edits and runs, step by step. Tag a hook payload with `coucou_agent` to give any agent its own pill (see [`docs/AGENTS.md`](docs/AGENTS.md)). Finished? Mochi does a happy little jump.
-- ✅ **Approve from the notch** — Claude Code and Codex permission requests show up with **Allow / Deny** (and **Always** for Claude Code), in VS Code, Cursor's terminal, or Codex. One click, back to work.
-- 🧑‍💻 **Jump to the right terminal** — open the exact terminal window of a session *(macOS)*.
-- 💬 **Chat with Claude, or with Gemini and OpenAI models using your own keys** *(Gemini and OpenAI: macOS)* — click the model name above the chat box to switch provider and pick a model; the list comes from each API account.
-- 📋 **Declare the tools you use** — open Settings → Active pills and pick your main workspace tool (VS Code, Cursor, Codex or Antigravity), then toggle up to 4 more: Gemini CLI, Anthropic, Google AI, OpenAI and service integrations *(macOS)*.
-- 📎 **Drop a file on the notch** — Mochi turns into a box and swallows it, then ask a question about it or send it by email *(email: macOS, Mail.app)*.
-- 🪟 **Drag Mochi onto any window** — attach that window as context for Claude *(macOS)*.
-- 🔌 **Integrations** — Stripe payments, n8n workflows, GitHub, Vercel deployments, Resend emails, Notion, Cal.com. Each one gets its own little colored Mochi.
-- 🎭 **A real character** — idle breathing, blinks, eyes on a sphere that follow your mouse, emotes, 28 handcrafted sounds, a greeting on launch.
-- 🫥 **Invisible when idle** — hides away when nothing is running, peeks out when you hover the notch (the top edge of the screen on Windows and Linux).
-- 🖥️ **Any Mac, notch or not** — on an iMac, a Mac mini, or a MacBook with its lid closed on an external display, Mochi sits in a small bar at the top of the screen.
-- 🔒 **Private by design** — no telemetry, no account. Keys live in your macOS Keychain, Windows Credential Manager or Linux Secret Service (GNOME Keyring, KWallet). The app only talks to the services you plug in.
+- 🎧 **Cyberpunk Studio Headphones**: Mochi sekarang memakai headphone developer studio dengan aksen LED RGB neon menyala (cyan `#38bdf8` & violet `#a855f7`).
+- 💬 **Interactive Speech Bubbles & Quotes**: Mochi bisa menyapa kamu secara interaktif (*"Halo masdevv!"*, *"Ngoding apa kita hari ini bray?"*, *"Jangan lupa git commit & push!"*) dan bereaksi saat di-klik/poke.
+- ⚡ **Real-Time Developer System HUD**: Monitor CPU & RAM secara real-time langsung di bilah header notch (`🟢 19% CPU · 3.6G RAM`).
+- 🛠️ **Custom Integrations System**: Bebas menambahkan shortcut aplikasi atau URL kustom (Telegram, GitHub, Discord, Web server lokal, dll.) langsung di pill island dengan tombol aksi cepat.
+- 🔊 **Mechanical Keyboard "Thock" Audio**: Efek suara tactile mechanical switch saat berpindah tab atau berinteraksi dengan Mochi, disintesis langsung via Web Audio API.
+- 🌌 **Tokyo Night & Neon Glassmorphism**: Tampilan pulau bernuansa gelap elegan dengan rim glow lembut dan padding presisi tanpa tabrakan teks.
+- 🤖 **Multi-Agent & Tool Monitoring**: Integrasi langsung dengan Claude Code, Antigravity, VS Code, Cursor, n8n, Vercel, Resend, dll.
 
-<table>
-<tr>
-<td><img src="docs/media/claude-code.png" alt="Claude Code session"></td>
-<td><img src="docs/media/stripe.png" alt="Stripe payments"></td>
-</tr>
-<tr>
-<td><img src="docs/media/chat.png" alt="Chat with Claude"></td>
-<td><img src="docs/media/dizzy.png" alt="Too many hits"></td>
-</tr>
-</table>
+---
 
-## Install
+## 💻 Panduan Instalasi & Menjalankan (Linux)
 
-### Download for macOS
+Versi ini diuji dan berjalan mulus secara native di **Linux (Wayland / Hyprland / Sway / X11)**.
 
-1. Grab the latest `Coucou.zip` from [Releases](https://github.com/Louis-CFM/coucou/releases).
-2. Unzip and move **Coucou.app** to `/Applications`.
-3. Launch it, and click **Open** when macOS asks you to confirm. Updating from 0.1.0? macOS may ask you, once for each key you saved, to let Coucou use it: enter your Mac password and click **Always Allow**.
+### 1. Prasyarat (Dependencies)
 
-### Windows
+Pastikan dependensi berikut sudah terpasang di sistem kamu:
 
-The Windows installer is **temporarily unavailable**. Microsoft Defender wrongly
-flags the unsigned installer as malware; a false-positive report is under review
-at Microsoft and the installer will come back once it is cleared and signed.
-Until then you can [build it from source](#build-from-source).
+* **Node.js** (v18+) & **npm**:
+  ```bash
+  node -v
+  ```
+* **Rust & Cargo**:
+  ```bash
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+  source "$HOME/.cargo/env"
+  ```
+* **Paket GTK & WebKit (Ubuntu / Debian)**:
+  ```bash
+  sudo apt update
+  sudo apt install -y libgtk-3-dev libwebkit2gtk-4.1-dev libgtk-layer-shell-dev libssl-dev build-essential pkg-config
+  ```
 
-There is no notch on a PC, so the island slides out of the top edge of the screen
-instead of hiding inside one. See [`windows/README.md`](windows/README.md) for the
-rest of the differences.
+---
 
-### Linux
-
-The first Linux build is out as a beta: download it from [Coucou for Linux 0.1.1 (beta)](https://github.com/Louis-CFM/coucou/releases/tag/linux-v0.1.1), x86_64 only for now. Later versions will be in [Releases](https://github.com/Louis-CFM/coucou/releases) under `linux-v*` tags.
-
-- **AppImage** (any distribution): `chmod +x Coucou-Linux-*.AppImage`, then run it.
-- **Debian / Ubuntu**: `sudo apt install ./Coucou-Linux-*.deb`
-- **Fedora / openSUSE**: `sudo dnf install ./Coucou-Linux-*.rpm`
-
-Check a download with `sha256sum -c SHA256SUMS --ignore-missing`. Gemini CLI, Antigravity and the Google AI and OpenAI chat are macOS only for now.
-
-The island sits on the top edge on compositors with layer-shell — COSMIC, KDE
-Plasma, Hyprland, Sway and other wlroots compositors. GNOME has no layer-shell,
-so there it opens as a regular window. See [`windows/README.md`](windows/README.md#linux).
-
-### Build from source
-
-**macOS** — requirements: macOS 15+, Xcode 16+, [XcodeGen](https://github.com/yonaskolb/XcodeGen).
+### 2. Clone & Build dari Source
 
 ```bash
-brew install xcodegen
-git clone https://github.com/Louis-CFM/coucou.git
-cd coucou/NotchBuddy
-xcodegen
-open NotchBuddy.xcodeproj   # then ⌘R
-```
+# 1. Clone repository ini
+git clone https://github.com/1dimas/coucou-by-1dimas.git
+cd coucou-by-1dimas/windows
 
-**Windows** — requirements: [Rust](https://rustup.rs), Node 20+, MSVC build tools.
-
-```powershell
-git clone https://github.com/Louis-CFM/coucou.git
-cd coucou/windows
+# 2. Install dependensi Node.js
 npm install
-npm run pack                # installer lands in windows/release/
+
+# 3. Build frontend dan compile binary Tauri
+npm run build
+npx tauri build --no-bundle
 ```
 
-**Linux** — requirements: [Rust](https://rustup.rs), Node 20+, and the WebKitGTK,
-gtk-layer-shell and appindicator development packages (Debian/Ubuntu names below).
+Hasil kompilasi binary akan berada di:  
+`target/release/coucou`
+
+---
+
+### 3. Menjalankan Coucou
+
+Kamu bisa langsung menyalin binary tersebut ke folder lokal agar bisa dijalankan dari mana saja:
 
 ```bash
-sudo apt install build-essential pkg-config \
-  libwebkit2gtk-4.1-dev libgtk-layer-shell-dev libayatana-appindicator3-dev \
-  librsvg2-dev libssl-dev libdbus-1-dev patchelf \
-  gstreamer1.0-plugins-base gstreamer1.0-plugins-good
-git clone https://github.com/Louis-CFM/coucou.git
-cd coucou/windows
-npm install
-npm run pack                # AppImage, .deb and .rpm land in windows/release/
+mkdir -p ~/.local/bin
+cp target/release/coucou ~/.local/bin/coucou
+chmod +x ~/.local/bin/coucou
+
+# Jalankan Coucou di background:
+coucou &
 ```
 
-## Setup
+> 💡 **Tips Pengguna Hyprland**: Kamu bisa menambahkan baris ini ke `~/.config/hypr/hyprland.conf` agar Coucou otomatis berjalan saat login:
+> ```ini
+> exec-once = ~/.local/bin/coucou
+> ```
 
-Click the Coucou icon in the menu bar (macOS) or in the system tray (Windows, Linux) → **Settings…**
+---
 
-| What | Why | Where the key goes |
-|---|---|---|
-| **Claude Code hooks** | live sessions and approvals | **Install hooks** — Coucou backs up `~/.claude/settings.json`, merges its hooks and shows you the diff before writing anything |
-| **Gemini CLI hooks** *(macOS)* | Gemini CLI sessions in the island | **Install hooks** in Settings → Gemini CLI — backs up `~/.gemini/settings.json` |
-| **Antigravity (agy) hooks** *(macOS)* | agy sessions in the island | **Install hooks** in Settings → Antigravity — backs up `~/.gemini/config/hooks.json` |
-| **Anthropic API key** | chat and questions about files | Settings → Anthropic API · Keychain / Windows Credential Manager / Secret Service |
-| **Google AI API key** *(macOS)* | chat with Google AI (Gemini) | Settings → Chat — other providers · Keychain |
-| **OpenAI API key** *(macOS)* | chat with OpenAI | Settings → Chat — other providers · Keychain |
-| **Active pills** *(macOS)* | choose which tools and agents appear in the island | Settings → Active pills |
-| Stripe, n8n, GitHub, Vercel, Resend, Notion, Cal.com | the service pills | Keychain / Windows Credential Manager / Secret Service, all optional |
+## 🪟 Dukungan Windows
 
-If Coucou isn't running, the hook exits immediately: **Claude Code is never blocked.**
+Source code berbasis **Tauri (Rust + TS)** dan memiliki implementasi Win32 API di dalamnya (`windows/src-tauri/src/platform/windows.rs`).  
+Untuk mengompilasi file `.exe` di Windows:
+1. Buka PowerShell di Windows dengan Node.js dan Rust terinstall.
+2. `cd windows`
+3. `npm install`
+4. `npm run build && npx tauri build`
 
-## Things to try
+Binary `.exe` akan tersedia di `target/release/coucou.exe`.
 
-| Do this | Mochi does that |
-|---|---|
-| Hover the notch (top edge on Windows and Linux) | peeks out and says hi 👋 |
-| Click it | opens |
-| Hover Mochi | blinks, eyes grow |
-| Click Mochi | squish + annoyed |
-| Click 3 times fast | 😵‍💫 dizzy for a few seconds |
-| Drag a file onto the island | turns into a box and swallows it |
-| Drag Mochi onto a window *(macOS)* | attaches it as context |
-| Click the model name above the chat box *(macOS)* | switch AI provider or model |
+---
 
-## How it works
+## ⚙️ Menambahkan Custom Integration
 
-**macOS**
+Kamu bisa menambahkan shortcut kustom kamu sendiri di `~/.config/coucou/settings.json`:
 
-- **Island**: a borderless `NSPanel` hugging the notch, driven by a small state machine (`hidden → petit → home`).
-- **Character**: drawn in SwiftUI `Canvas` + `TimelineView` at 60 fps — squircle body, eyes projected on a sphere, spring animations. No Rive, no Lottie, no images.
-- **Claude Code**: a tiny `nb-hook` script receives hook events and forwards them over a Unix socket to the app. For approvals it waits for your click, then answers the hook.
-- **Integrations**: lightweight pollers, paused when nothing is watching.
-- **Declared pills**: `PillCatalog.swift` is the single source of truth — every pill (coding tools, agents, AI providers, services) is declared there with its ID, color and category.
-- **Sounds**: 28 short WAVs played through preloaded `AVAudioPlayer`s.
+```json
+{
+  "customIntegrations": [
+    {
+      "id": "custom_telegram",
+      "name": "Telegram",
+      "target": "https://web.telegram.org/a/",
+      "color": "#24A1DE",
+      "description": "Buka Telegram Web"
+    },
+    {
+      "id": "custom_github",
+      "name": "GitHub",
+      "target": "https://github.com",
+      "color": "#A855F7",
+      "description": "Buka Dashboard GitHub"
+    }
+  ]
+}
+```
 
-The macOS app is native Swift 6 / SwiftUI / AppKit with **zero third-party dependencies**.
+---
 
-**Windows**
+## 👏 Credits & Attribution
 
-- A [Tauri 2](https://tauri.app) app (Rust + TypeScript): the island is a transparent, always-on-top window that never steals focus, Mochi is drawn in Canvas 2D with the same shapes, timings and sounds as on the Mac.
-- Claude Code hooks go through a tiny `coucou-hook.exe` and a named pipe; keys live in Windows Credential Manager.
-- Details and differences in [`windows/README.md`](windows/README.md).
-
-**Linux**
-
-- The same Tauri app as Windows. On Wayland the island is a gtk-layer-shell
-  overlay anchored to the top edge, and click-through is its input region.
-- Claude Code hooks go through the same `coucou-hook`, over a Unix socket in
-  `$XDG_RUNTIME_DIR`; keys live in the Secret Service.
-
-## Contributing
-
-Issues and PRs are very welcome — new integrations, new emotes, new sounds, bug fixes. See [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Credits
-
-Built by [Louis Raillé](https://louisraille.fr) with Claude Code.
-Inspired by the notch-companion concepts shared by design studios — this project is independent and not affiliated with any of them.
-
-## License
-
-- **Code:** [MIT](LICENSE) — use it, fork it, learn from it, just keep the copyright notice.
-- **Name, Mochi character, icon, sounds and media:** © Louis Raillé, all rights reserved — see [LICENSE-ASSETS.md](LICENSE-ASSETS.md). Shipping your own fork? Give it your own name and character.
-
-<div align="center">
-
-**If Mochi made you smile, a ⭐ helps a lot.**
-
-[Website](https://louis-cfm.github.io/coucou/) · [Privacy](https://louis-cfm.github.io/coucou/privacy.html) · [Terms](https://louis-cfm.github.io/coucou/terms.html) · [Support](https://louis-cfm.github.io/coucou/support.html)
-
-</div>
+- Dibuat dan dimodifikasi oleh **[@1dimas (masdevv)](https://github.com/1dimas)**.
+- Original project by **[Louis Raille (Louis-CFM)](https://github.com/Louis-CFM/coucou)**.
+- Licensed under the **MIT License**.

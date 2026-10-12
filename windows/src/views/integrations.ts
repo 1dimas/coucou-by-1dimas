@@ -403,7 +403,45 @@ export function hasIntegrationData(id: string): boolean {
   }
 }
 
+function customCard(task: AgentTask, hooks: IntegrationCardHooks): HTMLElement {
+  const custom = State.settings.customIntegrations?.find((c) => c.id === task.id);
+  const target = custom?.target ?? "";
+  const isUrl = target.startsWith("http://") || target.startsWith("https://");
+  const desc = custom?.description || (target ? target : "Custom shortcut");
+
+  const actions = h("div", { class: "int-actions" });
+  if (target) {
+    actions.append(
+      h("button", {
+        class: "link-btn",
+        style: `color:${task.color}e6`,
+        text: isUrl ? `Open ${task.name}` : `Run ${task.name}`,
+        onclick: () => void Bridge.launchTarget(target),
+      }),
+    );
+  }
+  actions.append(
+    h("button", {
+      class: "link-btn",
+      style: `color:${task.color}99`,
+      text: "Configure ⚙️",
+      onclick: () => hooks.openSettings(),
+    }),
+  );
+
+  return h(
+    "div",
+    { class: "int-card" },
+    header(task.color, task.name, "Custom"),
+    h("div", { class: "int-status" }, dot(task.color, 5), h("span", { text: desc })),
+    actions,
+  );
+}
+
 export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHooks): HTMLElement {
+  if (task.id.startsWith("custom_")) {
+    return customCard(task, hooks);
+  }
   if (task.id === "integration_n8n") {
     const hasActivity = task.steps.length > 0 && (task.state === "finished" || task.state === "error");
     return hooks.detailOpen && hasActivity

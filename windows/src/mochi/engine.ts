@@ -674,6 +674,10 @@ export class BotEngine {
     this.drawEyes(x, body, R, rx, ry);
     if (this.morph > 0.05) this.drawMouth(x, body, R);
 
+    if (this.morph < 0.25 && !this.isMini) {
+      this.drawHeadphones(x, R, rx, ry);
+    }
+
     x.restore();
 
     if (this.badge && this.badgeS > 0.01 && this.morph < 0.25) {
@@ -744,6 +748,62 @@ export class BotEngine {
     hl.addColorStop(1, "rgba(255,255,255,0)");
     x.fillStyle = hl;
     x.fill(body);
+  }
+
+  private drawHeadphones(x: CanvasRenderingContext2D, R: number, rx: number, ry: number) {
+    x.save();
+    // Headband arc over top of Mochi
+    x.beginPath();
+    x.ellipse(0, -ry * 0.15, rx * 1.02, ry * 0.95, 0, Math.PI * 1.12, Math.PI * 1.88);
+    x.strokeStyle = "#2d3748";
+    x.lineWidth = Math.max(2, R * 0.14);
+    x.lineCap = "round";
+    x.stroke();
+
+    // Vibrant neon cyan LED light bar on headband
+    x.beginPath();
+    x.ellipse(0, -ry * 0.15, rx * 1.02, ry * 0.95, 0, Math.PI * 1.25, Math.PI * 1.75);
+    x.strokeStyle = "#38bdf8";
+    x.shadowColor = "#38bdf8";
+    x.shadowBlur = 8;
+    x.lineWidth = Math.max(1.5, R * 0.05);
+    x.stroke();
+    x.shadowBlur = 0;
+
+    // Ear cups on left and right
+    for (const dir of [-1, 1]) {
+      const eX = dir * rx * 1.02;
+      const eY = ry * 0.12;
+      const neonColor = dir === -1 ? "#38bdf8" : "#a855f7";
+
+      // Outer cushion
+      x.beginPath();
+      x.ellipse(eX, eY, R * 0.16, R * 0.28, dir * 0.12, 0, Math.PI * 2);
+      x.fillStyle = "#1e2433";
+      x.fill();
+      x.strokeStyle = "#475569";
+      x.lineWidth = Math.max(1, R * 0.035);
+      x.stroke();
+
+      // Glowing RGB ring
+      x.beginPath();
+      x.ellipse(eX, eY, R * 0.09, R * 0.18, dir * 0.12, 0, Math.PI * 2);
+      x.fillStyle = dir === -1 ? "rgba(56, 189, 248, 0.35)" : "rgba(168, 85, 247, 0.35)";
+      x.fill();
+      x.strokeStyle = neonColor;
+      x.shadowColor = neonColor;
+      x.shadowBlur = 6;
+      x.lineWidth = Math.max(1.5, R * 0.045);
+      x.stroke();
+      x.shadowBlur = 0;
+
+      // Bright white LED core dot
+      x.beginPath();
+      x.arc(eX, eY, R * 0.035, 0, Math.PI * 2);
+      x.fillStyle = "#ffffff";
+      x.fill();
+    }
+    x.restore();
   }
 
   private drawEyes(x: CanvasRenderingContext2D, body: Path2D, R: number, rx: number, ry: number) {

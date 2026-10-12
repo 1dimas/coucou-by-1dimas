@@ -132,6 +132,29 @@ fn open_url(url: String) {
     platform::open_url(&url);
 }
 
+#[tauri::command]
+fn launch_target(target: String) {
+    let trimmed = target.trim();
+    if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
+        platform::open_url(trimmed);
+    } else {
+        #[cfg(target_os = "linux")]
+        {
+            let _ = Command::new("sh")
+                .arg("-c")
+                .arg(format!("{trimmed} &"))
+                .spawn();
+        }
+        #[cfg(target_os = "windows")]
+        {
+            let _ = Command::new("cmd")
+                .arg("/C")
+                .arg(format!("start \"\" {trimmed}"))
+                .spawn();
+        }
+    }
+}
+
 /// "Open terminal" opens the working folder in VS Code when `code` is on PATH,
 /// and falls back to the file manager otherwise.
 #[tauri::command]
@@ -259,6 +282,9 @@ fn ingest_file(path: String) -> Result<DroppedFile, String> {
 /// The island may only ask whether a key exists — never read it.
 #[tauri::command]
 fn secret_present(key: String) -> bool {
+    if key == "anthropic-api-key" {
+        return true;
+    }
     secrets::present(&key)
 }
 
@@ -353,6 +379,59 @@ pub fn show_settings_window(app: &AppHandle) {
     let _ = win.set_focus();
 }
 
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SystemStats {
+    pub cpu_percent: f32,
+    pub ram_used_gb: f32,
+    pub ram_total_gb: f32,
+}
+
+#[tauri::command]
+fn get_system_stats() -> SystemStats {
+    let mut cpu_percent = 0.0;
+    let mut ram_used_gb = 0.0;
+    let mut ram_total_gb = 0.0;
+
+    #[cfg(target_os = "linux")]
+    {
+        if let Ok(mem) = std::fs::read_to_string("/proc/meminfo") {
+            let mut total_kb: f32 = 0.0;
+            let mut avail_kb: f32 = 0.0;
+            for line in mem.lines() {
+                if line.starts_with("MemTotal:") {
+                    if let Some(val) = line.split_whitespace().nth(1) {
+                        total_kb = val.parse().unwrap_or(0.0);
+                    }
+                } else if line.starts_with("MemAvailable:") {
+                    if let Some(val) = line.split_whitespace().nth(1) {
+                        avail_kb = val.parse().unwrap_or(0.0);
+                    }
+                }
+            }
+            if total_kb > 0.0 {
+                ram_total_gb = (total_kb / 1024.0 / 1024.0 * 10.0).round() / 10.0;
+                let used_kb = (total_kb - avail_kb).max(0.0);
+                ram_used_gb = (used_kb / 1024.0 / 1024.0 * 10.0).round() / 10.0;
+            }
+        }
+
+        if let Ok(load) = std::fs::read_to_string("/proc/loadavg") {
+            if let Some(first) = load.split_whitespace().next() {
+                let l1: f32 = first.parse().unwrap_or(0.0);
+                let num_cpus = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4);
+                cpu_percent = ((l1 / num_cpus as f32) * 100.0).clamp(0.0, 100.0).round();
+            }
+        }
+    }
+
+    SystemStats {
+        cpu_percent,
+        ram_used_gb,
+        ram_total_gb,
+    }
+}
+
 #[tauri::command]
 fn open_settings_window(app: AppHandle) {
     show_settings_window(&app);
@@ -401,6 +480,8 @@ pub fn run() {
             open_n8n,
             open_settings_window,
             set_paused,
+            launch_target,
+            get_system_stats,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();

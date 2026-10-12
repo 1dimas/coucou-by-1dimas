@@ -20,6 +20,12 @@ async function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T |
   }
 }
 
+export interface SystemStats {
+  cpuPercent: number;
+  ramUsedGb: number;
+  ramTotalGb: number;
+}
+
 export interface BootInfo {
   settings: Settings;
   /** Logical screen rect of the monitor the island lives on. */
@@ -32,6 +38,7 @@ export interface BootInfo {
 
 export const Bridge = {
   boot: () => call<BootInfo>("boot"),
+  getSystemStats: () => call<SystemStats>("get_system_stats"),
 
   saveSettings: (settings: Settings) => call<void>("save_settings", { settings }),
 
@@ -51,6 +58,7 @@ export const Bridge = {
   reposition: () => call<void>("reposition"),
 
   openUrl: (url: string) => call<void>("open_url", { url }),
+  launchTarget: (target: string) => call<void>("launch_target", { target }),
 
   /** "Open terminal" → opens the folder in VS Code when `code` is on PATH. */
   openInVSCode: (path: string | null) => call<boolean>("open_in_vscode", { path }),

@@ -171,21 +171,25 @@ function claudeSection(status: HookStatus): HTMLElement {
   return section;
 }
 
-// ── Claude API section ────────────────────────────────────────────────────────
+// ── AI Engine section ─────────────────────────────────────────────────────────
 
 const MODELS: [string, string][] = [
-  ["claude-opus-5", "Claude Opus 5"],
+  ["gemini-3.8-flash-high", "Gemini 3.8 Flash (High)"],
+  ["gemini-3.8-flash-low", "Gemini 3.8 Flash (Low)"],
+  ["gemini-3.1-pro-high", "Gemini 3.1 Pro (High)"],
+  ["claude-sonnet-5-5-high", "Claude Sonnet 5.5"],
+  ["claude-opus-5-5-high", "Claude Opus 5.5"],
   ["claude-sonnet-5", "Claude Sonnet 5"],
-  ["claude-haiku-4-5", "Claude Haiku 4.5"],
+  ["claude-opus-5", "Claude Opus 5"],
 ];
 
 function apiSection(hasKey: boolean): HTMLElement {
   const dot = statusDot(hasKey);
-  const state = h("span", { class: "hint", text: hasKey ? "Key saved in the Windows Credential Manager." : "No key yet — the chat needs one." });
+  const state = h("span", { class: "hint", text: hasKey ? "Powered by Antigravity engine (agy)." : "No key yet — the chat needs one." });
 
   const field = h("input", {
     type: "password",
-    placeholder: hasKey ? "••••••••••••  (stored)" : "sk-ant-...",
+    placeholder: hasKey ? "Antigravity active" : "sk-ant-...",
     style: "flex:1 1 auto;min-width:0",
     autocomplete: "off",
     spellcheck: "false",
@@ -199,9 +203,9 @@ function apiSection(hasKey: boolean): HTMLElement {
     const present = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
     dot.style.background = present ? "#22c55e" : "#f4505e";
     state.textContent = present
-      ? "Key saved in the Windows Credential Manager."
+      ? "Powered by Antigravity engine (agy)."
       : "No key yet — the chat needs one.";
-    field.placeholder = present ? "••••••••••••  (stored)" : "sk-ant-...";
+    field.placeholder = present ? "Antigravity active" : "sk-ant-...";
     clearBtn.style.display = present ? "" : "none";
   }
 
@@ -417,6 +421,149 @@ function generalSection(): HTMLElement {
   );
 }
 
+// ── Custom Integrations section ───────────────────────────────────────────────
+
+function customIntegrationsSection(): HTMLElement {
+  const listContainer = h("div", { style: "display:flex;flex-direction:column;gap:10px" });
+
+  const COLOR_PRESETS = [
+    { name: "Cyan", hex: "#06b6d4" },
+    { name: "Emerald", hex: "#10b981" },
+    { name: "Purple", hex: "#8b5cf6" },
+    { name: "Sky", hex: "#0ea5e9" },
+    { name: "Amber", hex: "#f59e0b" },
+    { name: "Rose", hex: "#f43f5e" },
+    { name: "Indigo", hex: "#6366f1" },
+  ];
+
+  let selectedColor = COLOR_PRESETS[0].hex;
+
+  function redrawList() {
+    clear(listContainer);
+    const customs = settings.customIntegrations ?? [];
+    if (customs.length === 0) {
+      listContainer.append(
+        h("div", {
+          class: "hint",
+          text: "No custom integrations yet. Add one below (e.g. Telegram, Spotify, or your web projects)!",
+        }),
+      );
+      return;
+    }
+
+    for (const item of customs) {
+      const sw = toggle(item.enabled, (on) => {
+        item.enabled = on;
+        void save();
+      });
+
+      const delBtn = h("button", {
+        class: "danger",
+        text: "Remove",
+        style: "padding:4px 10px;font-size:11px",
+        onclick: () => {
+          settings.customIntegrations = (settings.customIntegrations ?? []).filter((x) => x.id !== item.id);
+          redrawList();
+          void save();
+        },
+      });
+
+      const row = h(
+        "div",
+        { class: "row", style: "background:rgba(255,255,255,0.03);padding:8px 12px;border-radius:10px;gap:10px" },
+        h("i", { class: "dot", style: `background:${item.color};width:10px;height:10px` }),
+        h("b", { text: item.name, style: "min-width:100px" }),
+        h("span", { class: "path", style: "flex:1 1 auto;font-size:12px", text: item.target ?? "" }),
+        sw,
+        delBtn,
+      );
+      listContainer.append(row);
+    }
+  }
+
+  // ── Form to add new ──
+  const nameInput = h("input", {
+    type: "text",
+    placeholder: "Name (e.g. Telegram Web)",
+    style: "flex:1 1 140px",
+  }) as HTMLInputElement;
+
+  const targetInput = h("input", {
+    type: "text",
+    placeholder: "URL or Command (e.g. https://web.telegram.org)",
+    style: "flex:2 1 220px",
+  }) as HTMLInputElement;
+
+  const colorRow = h("div", { class: "row", style: "gap:8px;align-items:center" });
+  colorRow.append(h("label", { text: "Accent color", style: "min-width:auto;font-size:12px" }));
+
+  const colorDots: HTMLElement[] = [];
+  for (const preset of COLOR_PRESETS) {
+    const dotEl = h("button", {
+      type: "button",
+      title: preset.name,
+      style: `width:20px;height:20px;border-radius:50%;background:${preset.hex};border:2px solid ${preset.hex === selectedColor ? "#fff" : "transparent"};padding:0;cursor:pointer`,
+      onclick: () => {
+        selectedColor = preset.hex;
+        for (const [idx, d] of colorDots.entries()) {
+          d.style.borderColor = COLOR_PRESETS[idx].hex === selectedColor ? "#fff" : "transparent";
+        }
+      },
+    });
+    colorDots.push(dotEl);
+    colorRow.append(dotEl);
+  }
+
+  const addBtn = h("button", {
+    class: "primary",
+    text: "+ Add Integration",
+    style: "margin-left:auto",
+    onclick: () => {
+      const name = nameInput.value.trim();
+      const target = targetInput.value.trim();
+      if (!name || !target) return;
+
+      const newId = `custom_${Date.now()}`;
+      if (!settings.customIntegrations) settings.customIntegrations = [];
+      settings.customIntegrations.push({
+        id: newId,
+        name,
+        color: selectedColor,
+        target,
+        description: target,
+        enabled: true,
+      });
+
+      nameInput.value = "";
+      targetInput.value = "";
+      redrawList();
+      void save();
+    },
+  });
+
+  const form = h(
+    "div",
+    { style: "display:flex;flex-direction:column;gap:10px;margin-top:6px;padding-top:12px;border-top:1px solid var(--hairline)" },
+    h("b", { style: "font-size:12.5px;color:var(--dim)", text: "Add New Custom Integration" }),
+    h("div", { class: "row", style: "gap:10px" }, nameInput, targetInput),
+    h("div", { class: "row" }, colorRow, addBtn),
+  );
+
+  redrawList();
+
+  return h(
+    "section",
+    {},
+    h("h2", {}, statusDot(true), h("span", { text: "Custom Integrations (Mochi Pills)" })),
+    h("div", {
+      class: "hint",
+      text: "Create custom shortcuts & agent pills that appear right next to Mochi. Click them to launch URLs or desktop apps instantly.",
+    }),
+    listContainer,
+    form,
+  );
+}
+
 // ── Boot ──────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -444,6 +591,7 @@ async function main() {
     claudeSection(status),
     apiSection(hasKey),
     integrationsSection(present),
+    customIntegrationsSection(),
     generalSection(),
     h("div", {
       class: "hint",

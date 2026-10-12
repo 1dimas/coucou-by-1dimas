@@ -6,6 +6,8 @@ import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
 import { Ticker } from "./ticker";
 import { State, type AgentTask } from "../core/state";
+import { Sound } from "../core/sound";
+import { Bridge } from "../core/bridge";
 import { washRGBA, type IslandViewName, type Wash } from "../core/layout";
 import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
 import { buildPrompt } from "./chat";
@@ -82,19 +84,52 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const tabChat = h("button", { class: "tab", title: "Ask", onclick: () => go("prompt") }, svg(ICONS.bubble, 13));
   const tabDrop = h("button", { class: "tab", title: "Drop", onclick: () => go("upload") }, svg(ICONS.plus, 13));
 
+  const minBtn = h("button", { title: "Minimize", onclick: () => { Sound.thock(); actions.collapse(); } }, svg(ICONS.chevronUp, 14));
   const gearBtn = h("button", { title: "Settings", onclick: () => go("settings") }, svg(ICONS.gear, 14));
-  const soundBtn = h("button", { title: "Mute", onclick: () => actions.toggleSound() }, svg(ICONS.speakerOn, 14));
+  const soundBtn = h("button", { title: "Mute", onclick: () => { Sound.thock(); actions.toggleSound(); } }, svg(ICONS.speakerOn, 14));
 
   function go(v: IslandViewName) {
-    actions.blip();
+    Sound.thock();
     actions.setView(v);
   }
+
+  const brand = h(
+    "div",
+    { class: "header-brand", title: "Coucou · masdevv edition" },
+    h("span", { class: "brand-name", text: "Coucou" }),
+    h("span", { class: "brand-tag", text: "masdevv" }),
+  );
+
+  const hudDot = h("i", { class: "hud-dot" });
+  const hudCpu = h("span", { class: "hud-val", text: "--% CPU" });
+  const hudRam = h("span", { class: "hud-val", text: "--G RAM" });
+  const hud = h(
+    "div",
+    { class: "header-hud", title: "Developer System HUD" },
+    hudDot,
+    hudCpu,
+    h("span", { class: "hud-sep", text: "·" }),
+    hudRam,
+  );
+
+  async function updateStats() {
+    const stats = await Bridge.getSystemStats();
+    if (stats) {
+      hudCpu.textContent = `${Math.round(stats.cpuPercent)}% CPU`;
+      hudRam.textContent = `${stats.ramUsedGb}G RAM`;
+      hudDot.style.background = stats.cpuPercent > 70 ? "#f4505e" : stats.cpuPercent > 40 ? "#f5a524" : "#22c55e";
+    }
+  }
+
+  void updateStats();
+  setInterval(() => void updateStats(), 3500);
 
   const el = h(
     "div",
     { id: "header" },
     h("div", { class: "tabs" }, tabHome, tabChat, tabDrop),
-    h("div", { class: "header-actions" }, gearBtn, soundBtn),
+    h("div", { class: "header-center" }, brand, hud),
+    h("div", { class: "header-actions" }, minBtn, gearBtn, soundBtn),
   );
 
   return {
@@ -214,7 +249,7 @@ function buildOverview(actions: ViewActions): ViewHost {
 
       jump.style.display = detailOpen ? "none" : "";
 
-      const others = State.otherTasks.slice(0, 4);
+      const others = State.otherTasks.slice(0, 8);
       const pillKey = others.map((t) => `${t.id}:${t.pillBadge ?? ""}`).join("|");
       if (pillKey !== pillIds) {
         pillIds = pillKey;
@@ -273,7 +308,7 @@ function lighten(hex: string, amount: number): string {
 function buildEmpty(actions: ViewActions): ViewHost {
   const body = h(
     "div",
-    { class: "stack", style: "padding:0 18px 0 118px;flex-direction:row;align-items:center;gap:16px" },
+    { class: "stack", style: "padding:0 18px 0 126px;flex-direction:row;align-items:center;gap:16px" },
     h(
       "div",
       { style: "display:flex;flex-direction:column;gap:5px" },
@@ -385,7 +420,7 @@ function buildFinished(actions: ViewActions): ViewHost {
 function buildConfused(): ViewHost {
   const body = h(
     "div",
-    { class: "stack", style: "padding:0 18px 0 128px" },
+    { class: "stack", style: "padding:0 18px 0 136px" },
     h("div", { class: "title", text: "Too many hits at once." }),
     h("div", { class: "sub", text: "Give me a sec — back to work in three seconds." }),
   );
@@ -396,7 +431,7 @@ function buildConfused(): ViewHost {
 
 function buildNote(): ViewHost {
   const title = h("div", { class: "title" });
-  const el = h("div", { class: "view" }, card(null, h("div", { class: "stack", style: "padding:0 18px 0 98px" }, title)));
+  const el = h("div", { class: "view" }, card(null, h("div", { class: "stack", style: "padding:0 18px 0 106px" }, title)));
   return {
     el,
     sync() {
@@ -447,7 +482,7 @@ function buildSettings(actions: ViewActions): ViewHost {
   );
 
   const el = h("div", { class: "view" },
-    card(null, h("div", { class: "stack", style: "padding:14px 16px 14px 84px" }, rows)));
+    card(null, h("div", { class: "stack", style: "padding:14px 16px 14px 100px" }, rows)));
 
   return {
     el,
@@ -497,7 +532,7 @@ export function buildViews(
   map.set("confused", buildConfused());
   map.set("note", buildNote());
   map.set("settings", buildSettings(actions));
-  map.set("prompt", buildPrompt(onChatHeightChange));
+  map.set("prompt", buildPrompt(onChatHeightChange, actions));
   map.set("upload", buildUpload());
   map.set("uploading", buildUploading());
   map.set("choose", buildChoose(actions));

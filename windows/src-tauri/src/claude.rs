@@ -1,57 +1,30 @@
-// Claude API client — the same integration as ClaudeService.swift: multi-turn
-// chat with web search, and files sent as document/image/text blocks.
-//
-// Everything happens here rather than in the island: the API key never leaves
-// the Credential Manager, and file bytes never cross the IPC boundary.
+// Antigravity AI engine — integrates Google Antigravity (agy) CLI
+// directly into Coucou's Mochi chat interface without requiring external API keys.
 
 use std::sync::Mutex;
-
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
 
-use crate::secrets;
-
-const ENDPOINT: &str = "https://api.anthropic.com/v1/messages";
-const ANTHROPIC_VERSION: &str = "2023-06-01";
-/// Server-side fallback: on a policy decline the API retries the same request on
-/// a fallback model inside the same call, so the island never shows a dead end.
-const FALLBACK_BETA: &str = "server-side-fallback-2026-07-01";
-const MAX_TOKENS: u32 = 4096;
-/// Text and code files are inlined; anything larger is skipped, as on macOS.
-const MAX_INLINE_TEXT: u64 = 200_000;
-
-pub const DEFAULT_MODEL: &str = "claude-opus-5";
+pub const DEFAULT_MODEL: &str = "gemini-3.8-flash-high";
+const MAX_INLINE_TEXT: usize = 200_000;
 
 const SYSTEM_PROMPT: &str = "You are Mochi, a personal AI assistant living at the top of the user's screen. \
-You have web search access and can help with absolutely anything — research, coding, finding places, recommendations, tasks, questions. \
-Respond in the user's language. Be thorough and complete — use as much detail as the task requires. \
-No markdown formatting (no **, no ##, no bullet dashes). Use plain text with line breaks.";
+You have access to web search, file tools, and terminal commands to assist with research, writing, coding, creating documents, and any tasks. \
+When asked to create a document, note, or file, write it and always provide a friendly, clear confirmation and preview/summary of its content in your response text so the user can read it in the chat. \
+Always provide a complete text response. Respond in the user's language. \
+Keep formatting clean and easy to read (plain text, simple lists, or code snippets; avoid heavy markdown header hashes like ###).";
 
 #[derive(Default)]
 pub struct Chat {
-    /// Full multi-turn history, including tool_use / tool_result blocks.
-    messages: Mutex<Vec<Value>>,
+    pub conversation_id: Mutex<Option<String>>,
 }
 
 impl Chat {
     pub fn reset(&self) {
-        self.messages.lock().unwrap().clear();
+        *self.conversation_id.lock().unwrap() = None;
     }
 
-    fn is_empty(&self) -> bool {
-        self.messages.lock().unwrap().is_empty()
-    }
-
-    fn push(&self, message: Value) {
-        self.messages.lock().unwrap().push(message);
-    }
-
-    fn pop(&self) {
-        self.messages.lock().unwrap().pop();
-    }
-
-    fn snapshot(&self) -> Vec<Value> {
-        self.messages.lock().unwrap().clone()
+    pub fn is_empty(&self) -> bool {
+        self.conversation_id.lock().unwrap().is_none()
     }
 }
 
@@ -68,162 +41,175 @@ pub struct ChatReply {
     pub text: String,
 }
 
-/// One chat turn. Returns the assistant's text, or a message the island shows
-/// in the note view.
+#[derive(Deserialize)]
+struct DeniedAction {
+    action: Option<String>,
+    display_name: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct AgyResponse {
+    conversation_id: Option<String>,
+    #[allow(dead_code)]
+    status: Option<String>,
+    response: Option<String>,
+    error: Option<String>,
+    denied_actions: Option<Vec<DeniedAction>>,
+}
+
+fn find_agy_binary() -> std::path::PathBuf {
+    if let Ok(home) = std::env::var("HOME") {
+        let local_bin = std::path::PathBuf::from(home).join(".local/bin/agy");
+        if local_bin.is_file() {
+            return local_bin;
+        }
+    }
+    for path in &["/usr/local/bin/agy", "/usr/bin/agy"] {
+        let p = std::path::PathBuf::from(path);
+        if p.is_file() {
+            return p;
+        }
+    }
+    std::path::PathBuf::from("agy")
+}
+
+fn normalize_model(model: &str) -> Option<&'static str> {
+    match model {
+        "gemini-3.8-flash-high" => Some("gemini-3.8-flash-high"),
+        "gemini-3.8-flash-medium" => Some("gemini-3.8-flash-medium"),
+        "gemini-3.8-flash-low" => Some("gemini-3.8-flash-low"),
+        "gemini-3.7-flash-high" => Some("gemini-3.7-flash-high"),
+        "gemini-3.7-flash-medium" => Some("gemini-3.7-flash-medium"),
+        "gemini-3.7-flash-low" => Some("gemini-3.7-flash-low"),
+        "gemini-3.6-flash-high" => Some("gemini-3.6-flash-high"),
+        "gemini-3.1-pro-high" => Some("gemini-3.1-pro-high"),
+        "claude-opus-5-5-high" | "claude-opus-5" => Some("claude-opus-5-5-high"),
+        "claude-sonnet-5-5-high" | "claude-sonnet-5" => Some("claude-sonnet-5-5-high"),
+        "claude-opus-5-5-low" => Some("claude-opus-5-5-low"),
+        "claude-sonnet-5-5-low" => Some("claude-sonnet-5-5-low"),
+        "gpt-oss-120b-medium" => Some("gpt-oss-120b-medium"),
+        _ => None,
+    }
+}
+
+/// One chat turn using Antigravity.
 pub async fn send(
     chat: &Chat,
     model: &str,
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let key = secrets::get("anthropic-api-key")
-        .ok_or_else(|| "API key missing. Open settings.".to_string())?;
+    let mut full_prompt = String::new();
 
-    let mut content: Vec<Value> = Vec::new();
+    let is_first_turn = chat.is_empty();
+    if is_first_turn {
+        full_prompt.push_str(&format!("[Instruction: {SYSTEM_PROMPT}]\n\n"));
+    }
 
-    // File / window context rides along with the first message only, exactly
-    // like ClaudeService.chat().
-    if chat.is_empty() {
-        match &context {
-            Some(ChatContext::File { name, path }) => {
-                if let Some(block) = file_block(path) {
-                    content.push(block);
+    if let Some(ctx) = context {
+        match ctx {
+            ChatContext::File { name, path } => {
+                full_prompt.push_str(&format!("[Context: User dropped file \"{name}\" at path \"{path}\"]\n"));
+                if let Ok(text) = std::fs::read_to_string(&path) {
+                    if text.len() <= MAX_INLINE_TEXT {
+                        full_prompt.push_str(&format!("File content:\n{text}\n\n"));
+                    }
                 }
-                content.push(json!({ "type": "text", "text": format!("File: {name}") }));
             }
-            Some(ChatContext::Window { app_name, title, url }) => {
-                let mut text = format!("Context — App: {app_name}, Window: {title}");
+            ChatContext::Window { app_name, title, url } => {
+                let mut text = format!("[Context: Active application \"{app_name}\", Window \"{title}\"");
                 if let Some(url) = url {
                     text.push_str(&format!(", URL: {url}"));
                 }
-                content.push(json!({ "type": "text", "text": text }));
+                text.push_str("]\n\n");
+                full_prompt.push_str(&text);
             }
-            None => {}
         }
     }
-    content.push(json!({ "type": "text", "text": query }));
 
-    chat.push(json!({ "role": "user", "content": content }));
+    full_prompt.push_str(&query);
 
-    let body = json!({
-        "model": model,
-        "max_tokens": MAX_TOKENS,
-        "system": SYSTEM_PROMPT,
-        "tools": [{ "type": "web_search_20260209", "name": "web_search", "max_uses": 5 }],
-        "fallbacks": "default",
-        "messages": chat.snapshot(),
-    });
+    let agy_bin = find_agy_binary();
+    let conv_id = chat.conversation_id.lock().unwrap().clone();
+    let selected_model = normalize_model(model);
 
-    let response = match call(&key, &body).await {
-        Ok(v) => v,
-        Err(err) => {
-            chat.pop(); // keep the history consistent with what the model saw
+    let (stdout, stderr) = tokio::task::spawn_blocking(move || {
+        let mut cmd = std::process::Command::new(agy_bin);
+        if let Some(ref id) = conv_id {
+            cmd.arg("--conversation").arg(id);
+        }
+        if let Some(m) = selected_model {
+            cmd.arg("--model").arg(m);
+        }
+        cmd.arg("--dangerously-skip-permissions");
+        cmd.arg("--output-format").arg("json");
+        cmd.arg("-p").arg(&full_prompt);
+
+        if let Ok(home) = std::env::var("HOME") {
+            cmd.current_dir(home);
+        }
+
+        let output = cmd.output().map_err(|e| format!("Failed to run agy: {e}"))?;
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(format!("Antigravity error: {stderr}"));
+        }
+        Ok((
+            String::from_utf8_lossy(&output.stdout).to_string(),
+            String::from_utf8_lossy(&output.stderr).to_string(),
+        ))
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+
+    let json_str = if let (Some(start), Some(end)) = (stdout.find('{'), stdout.rfind('}')) {
+        if start <= end {
+            &stdout[start..=end]
+        } else {
+            &stdout
+        }
+    } else {
+        &stdout
+    };
+
+    let parsed: AgyResponse = serde_json::from_str(json_str)
+        .map_err(|e| format!("Failed to parse Antigravity response: {e}\nOutput: {stdout}"))?;
+
+    if let Some(err) = parsed.error {
+        if !err.is_empty() {
             return Err(err);
         }
-    };
-
-    // A policy decline comes back as HTTP 200 with stop_reason "refusal".
-    if response.get("stop_reason").and_then(Value::as_str) == Some("refusal") {
-        chat.pop();
-        let why = response
-            .get("stop_details")
-            .and_then(|d| d.get("explanation"))
-            .and_then(Value::as_str)
-            .unwrap_or("Claude declined this one.");
-        return Err(why.to_string());
     }
 
-    let Some(blocks) = response.get("content").and_then(Value::as_array).cloned() else {
-        chat.pop();
-        return Err("Unexpected API response.".into());
-    };
-
-    // Store the whole content — tool_use / tool_result blocks included — so the
-    // next turn has the right context.
-    chat.push(json!({ "role": "assistant", "content": blocks.clone() }));
-
-    let text = blocks
-        .iter()
-        .filter(|b| b.get("type").and_then(Value::as_str) == Some("text"))
-        .filter_map(|b| b.get("text").and_then(Value::as_str))
-        .collect::<Vec<_>>()
-        .join("\n")
-        .trim()
-        .to_string();
-
+    let text = parsed.response.unwrap_or_default().trim().to_string();
     if text.is_empty() {
-        return Err("No response text.".into());
-    }
-    Ok(ChatReply { text })
-}
-
-async fn call(key: &str, body: &Value) -> Result<Value, String> {
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(90))
-        .build()
-        .map_err(|e| e.to_string())?;
-
-    let response = client
-        .post(ENDPOINT)
-        .header("x-api-key", key)
-        .header("anthropic-version", ANTHROPIC_VERSION)
-        .header("anthropic-beta", FALLBACK_BETA)
-        .header("content-type", "application/json")
-        .json(body)
-        .send()
-        .await
-        .map_err(|e| format!("Network error: {e}"))?;
-
-    let status = response.status();
-    let text = response.text().await.map_err(|e| e.to_string())?;
-    if !status.is_success() {
-        // Surface the API's own message, which is what makes a bad key obvious.
-        let detail = serde_json::from_str::<Value>(&text)
-            .ok()
-            .and_then(|v| {
-                v.get("error")
-                    .and_then(|e| e.get("message"))
-                    .and_then(Value::as_str)
-                    .map(str::to_string)
-            })
-            .unwrap_or_else(|| text.chars().take(200).collect());
-        return Err(format!("Claude API {status}: {detail}"));
-    }
-    serde_json::from_str(&text).map_err(|e| format!("Bad API response: {e}"))
-}
-
-/// PDF → document block, image → image block, text/code → inline text.
-/// Mirrors readFileAsBlock() in ClaudeService.swift.
-fn file_block(path: &str) -> Option<Value> {
-    let ext = std::path::Path::new(path)
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("")
-        .to_lowercase();
-
-    let media_type = match ext.as_str() {
-        "pdf" => Some(("document", "application/pdf")),
-        "jpg" | "jpeg" => Some(("image", "image/jpeg")),
-        "png" => Some(("image", "image/png")),
-        "gif" => Some(("image", "image/gif")),
-        "webp" => Some(("image", "image/webp")),
-        _ => None,
-    };
-
-    if let Some((block_type, media)) = media_type {
-        let bytes = std::fs::read(path).ok()?;
-        return Some(json!({
-            "type": block_type,
-            "source": { "type": "base64", "media_type": media, "data": base64(&bytes) },
-        }));
+        if let Some(ref denied) = parsed.denied_actions {
+            if !denied.is_empty() {
+                let actions = denied
+                    .iter()
+                    .filter_map(|d| d.display_name.as_deref().or(d.action.as_deref()))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                return Err(format!("Aksi dibatasi: {actions}"));
+            }
+        }
+        let stderr_trimmed = stderr.trim();
+        if !stderr_trimmed.is_empty() {
+            return Err(format!("Antigravity error: {stderr_trimmed}"));
+        }
+        return Err("No response received from Antigravity.".into());
     }
 
-    let len = std::fs::metadata(path).ok()?.len();
-    if len > MAX_INLINE_TEXT {
-        return None;
+    if let Some(new_conv_id) = parsed.conversation_id {
+        if !new_conv_id.is_empty() {
+            *chat.conversation_id.lock().unwrap() = Some(new_conv_id);
+        }
     }
-    let text = std::fs::read_to_string(path).ok()?;
-    Some(json!({ "type": "text", "text": format!("File contents:\n{text}") }))
+
+    // Clean up basic markdown symbols so Coucou's plain-text bubbles display neatly
+    let cleaned = text.replace("**", "").replace("### ", "").replace("## ", "");
+
+    Ok(ChatReply { text: cleaned })
 }
 
 /// Small standalone base64 encoder — not worth another dependency.

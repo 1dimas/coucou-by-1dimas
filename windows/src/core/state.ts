@@ -81,6 +81,15 @@ export interface IntegrationInfo {
   configured: boolean;
 }
 
+export interface CustomIntegration {
+  id: string;
+  name: string;
+  color: string;
+  target?: string;
+  description?: string;
+  enabled: boolean;
+}
+
 export interface Settings {
   soundEnabled: boolean;
   soundVolume: number;
@@ -92,6 +101,7 @@ export interface Settings {
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  customIntegrations?: CustomIntegration[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +116,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  customIntegrations: [],
 };
 
 type Listener = () => void;
@@ -137,12 +148,18 @@ class AppState {
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
   pendingApproval: ApprovalInfo | null = null;
+  pendingEmote: BotEmoteName | null = null;
 
   integrations: Record<string, IntegrationInfo> = {};
 
   lastActivity = performance.now();
 
   settings: Settings = { ...DEFAULT_SETTINGS };
+
+  triggerEmote(emote: BotEmoteName) {
+    this.pendingEmote = emote;
+    this.notify();
+  }
 
   private listeners = new Set<Listener>();
 
@@ -199,7 +216,7 @@ class AppState {
     this.notify();
   }
 
-  /** loadIntegrationTasks() — VS Code always on, the rest opt-in (max 4). */
+  /** loadIntegrationTasks() — VS Code always on, custom integrations and standard opt-ins. */
   loadIntegrationTasks() {
     for (const proto of INTEGRATION_AGENTS) {
       const shouldLoad =
@@ -208,20 +225,40 @@ class AppState {
       if (shouldLoad && idx < 0) this.tasks.push({ ...proto, steps: [] });
       if (!shouldLoad && idx >= 0) this.tasks.splice(idx, 1);
     }
-    // Order: integration_claude first, then agent_* pills (visible in slice(0,4)),
-    // then other integrations in declaration order.
+
+    // Load custom integrations
+    const customs = this.settings.customIntegrations ?? [];
+    for (const c of customs) {
+      const shouldLoad = c.enabled !== false;
+      const idx = this.tasks.findIndex((t) => t.id === c.id);
+      if (shouldLoad) {
+        const item: AgentTask = {
+          id: c.id,
+          name: c.name,
+          color: c.color || "#06b6d4",
+          state: "idle",
+          stepIndex: 0,
+          steps: c.description ? [c.description] : [c.target ?? ""],
+          source: "agent",
+          isIntegration: true,
+        };
+        if (idx < 0) this.tasks.push(item);
+        else this.tasks[idx] = { ...this.tasks[idx], ...item };
+      } else if (idx >= 0) {
+        this.tasks.splice(idx, 1);
+      }
+    }
+
+    // Order: integration_claude first, then custom_* and agent_* pills, then other integrations
     const order = INTEGRATION_AGENTS.map((t) => t.id);
     this.tasks.sort((a, b) => {
-      const isAgentA = a.id.startsWith("agent_");
-      const isAgentB = b.id.startsWith("agent_");
-      // integration_claude always first
+      const isCustomA = a.id.startsWith("custom_") || a.id.startsWith("agent_");
+      const isCustomB = b.id.startsWith("custom_") || b.id.startsWith("agent_");
       if (a.id === "integration_claude") return -1;
       if (b.id === "integration_claude") return 1;
-      // agent_* before other integrations; preserve insertion order among themselves
-      if (isAgentA && !isAgentB) return -1;
-      if (isAgentB && !isAgentA) return 1;
-      if (isAgentA && isAgentB) return 0;
-      // both known integrations → declaration order
+      if (isCustomA && !isCustomB) return -1;
+      if (isCustomB && !isCustomA) return 1;
+      if (isCustomA && isCustomB) return 0;
       return order.indexOf(a.id) - order.indexOf(b.id);
     });
     if (!this.focusId) this.focusId = "integration_claude";

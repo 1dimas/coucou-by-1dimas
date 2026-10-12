@@ -41,7 +41,11 @@ async function main() {
         break;
       case "open":
         setPaused(false);
-        island.alert(State.defaultView());
+        if (State.mode === "expanded") {
+          island.collapse();
+        } else {
+          island.alert(State.defaultView());
+        }
         break;
       case "pause":
         setPaused(!State.paused);

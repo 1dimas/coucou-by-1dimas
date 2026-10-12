@@ -7,7 +7,7 @@ import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
   islandSize,
-  type IslandMode, type IslandViewName,
+  type IslandMode, type IslandViewName, type BotEmoteName,
 } from "../core/layout";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
@@ -30,6 +30,17 @@ const UPLOAD_VIEWS: ReadonlySet<IslandViewName> = new Set(["upload", "uploading"
 /** Seconds between the drop and the moment the progress bar starts filling. */
 const PRE_PROGRESS = USC.T_PROG_START - USC.T_DROP;
 
+const DEV_QUOTES = [
+  "Halo masdevv! ☕",
+  "Ngoding apa kita hari ini bray?",
+  "Jangan lupa git commit & push!",
+  "Kode rapi, hati tenang ✨",
+  "Coucou siap nemenin ngoding!",
+  "Bikin kopi dulu biar fokus ☕",
+  "Bug? Tenang, Mochi temenin!",
+  "Keep pushing, masdevv! 🚀",
+];
+
 const modeOrder = (m: IslandMode) => (m === "hidden" ? 0 : m === "compact" ? 1 : 2);
 
 export class Island {
@@ -41,6 +52,9 @@ export class Island {
   private contentEl!: HTMLElement;
   private viewsEl!: HTMLElement;
   private botCanvas!: HTMLCanvasElement;
+  private botBubble!: HTMLElement;
+  private quoteIdx = 0;
+  private bubbleTimer: number | null = null;
   private botGlow!: HTMLElement;
   private greetingCanvas!: HTMLCanvasElement;
   private miniGrid!: HTMLElement;
@@ -84,6 +98,8 @@ export class Island {
   private prevViewBeforeConfused: IslandViewName = "overview";
   private lastSyncedView: IslandViewName | null = null;
 
+  private botClickCount = 0;
+  private lastBotClickTime = 0;
   /** Drop sequence bookkeeping: last tick played, and whether the ✓ has fired. */
   private uploadTens = 0;
   private uploadDone = false;
@@ -96,6 +112,11 @@ export class Island {
     this.engine.onDizzy = () => this.handleDizzy();
     this.greeting.onComplete = () => this.fsm.greetComplete();
     State.subscribe(() => {
+      if (State.pendingEmote) {
+        const e = State.pendingEmote;
+        State.pendingEmote = null;
+        this.engine.triggerEmote(e);
+      }
       this.dirty = true;
       this.ensureRunning();
     });
@@ -130,6 +151,11 @@ export class Island {
         if (task.id === "integration_claude") void Bridge.openInVSCode(task.sessionCwd ?? null);
         else if (task.id === "integration_n8n") void Bridge.openN8n();
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
+        else if (task.id.startsWith("custom_")) {
+          const custom = State.settings.customIntegrations?.find((c) => c.id === task.id);
+          const target = custom?.target;
+          if (target) void Bridge.launchTarget(target);
+        }
       },
       openUrl: (url) => {
         if (url) void Bridge.openUrl(url);
@@ -201,12 +227,16 @@ export class Island {
       this.uploadCanvas.el,
       this.contentEl,
     );
+    this.botBubble = h("div", { id: "bot-bubble", class: "hidden" });
+    this.botBubble.addEventListener("click", () => this.nextQuote());
+
     this.islandEl = h(
       "div",
       { id: "island" },
       this.clipEl,
       this.botGlow,
       this.botCanvas,
+      this.botBubble,
       this.miniGrid,
       this.countdown,
     );
@@ -294,7 +324,14 @@ export class Island {
     if (State.mode !== "expanded") this.setMode("expanded");
     else this.animateGeometry(false);
     State.lastActivity = performance.now();
-    this.homeCollapseAt = null;
+    if (view === "overview" || view === "empty") {
+      window.setTimeout(() => this.showQuote(), 700);
+    }
+    if (!this.wasInIsland && !State.isPinned) {
+      this.homeCollapseAt = performance.now() + State.settings.autoCloseInterval * 1000;
+    } else {
+      this.homeCollapseAt = null;
+    }
     State.notify();
   }
 
@@ -540,7 +577,27 @@ export class Island {
       }
       if (this.isBotHit(e.clientX, e.clientY)) {
         this.cancelBotHover();
-        this.engine.slap();
+        const t = performance.now();
+        if (t - this.lastBotClickTime < 500) {
+          this.botClickCount++;
+        } else {
+          this.botClickCount = 1;
+        }
+        this.lastBotClickTime = t;
+
+        if (this.botClickCount >= 3) {
+          this.engine.slap();
+          this.botClickCount = 0;
+          this.showQuote("Aduh pusing bray! 😵");
+          Sound.play("annoyed");
+        } else {
+          const pokeEmotes: BotEmoteName[] = ["love", "happy", "wink"];
+          const picked = pokeEmotes[Math.floor(Math.random() * pokeEmotes.length)];
+          this.engine.triggerEmote(picked);
+          Sound.thock();
+          this.nextQuote();
+        }
+        return;
       }
     });
 
@@ -567,6 +624,8 @@ export class Island {
     window.addEventListener("mouseout", (e) => {
       if (e.relatedTarget == null) this.onCursor(-10_000, -10_000);
     });
+    document.addEventListener("mouseleave", () => this.onCursor(-10_000, -10_000));
+    this.islandEl.addEventListener("mouseleave", () => this.onCursor(-10_000, -10_000));
   }
 
   /** Cursor in window-logical coordinates. */
@@ -784,6 +843,11 @@ export class Island {
     this.botCanvas.style.left = `${this.botCx.value - w / 2}px`;
     this.botCanvas.style.top = `${this.botCy.value - BOT_OVERHANG / 2 - hCss / 2}px`;
 
+    if (this.botBubble) {
+      this.botBubble.style.left = `${this.botCx.value}px`;
+      this.botBubble.style.top = `${this.botCy.value - w * 0.58}px`;
+    }
+
     const ctx = this.botCanvas.getContext("2d");
     if (!ctx) return;
 
@@ -828,6 +892,10 @@ export class Island {
     const remaining = (this.homeCollapseAt - nowMs) / 1000;
     this.countdown.style.width =
       remaining < windowS ? `${Math.max(0, clamp(remaining / windowS, 0, 1) * 160)}px` : "0px";
+    if (remaining <= 0) {
+      this.homeCollapseAt = null;
+      this.collapse();
+    }
   }
 
   // ── DOM sync ────────────────────────────────────────────────────────────────
@@ -877,6 +945,9 @@ export class Island {
     }
 
     syncMiniBotStates(State.tasks);
+    this.islandEl.dataset.state = State.effectiveState;
+    this.islandEl.dataset.mode = State.mode;
+    this.islandEl.dataset.view = State.view;
     this.engine.setState(State.effectiveState);
   }
 
@@ -894,5 +965,27 @@ export class Island {
 
   get chatHeight() {
     return chatPromptHeight(State.chatHistory.length);
+  }
+
+  private showQuote(text?: string) {
+    if (State.mode !== "expanded") {
+      this.botBubble?.classList.add("hidden");
+      return;
+    }
+    const msg = text ?? DEV_QUOTES[this.quoteIdx % DEV_QUOTES.length];
+    if (this.botBubble) {
+      this.botBubble.textContent = msg;
+      this.botBubble.classList.remove("hidden");
+      if (this.bubbleTimer != null) window.clearTimeout(this.bubbleTimer);
+      this.bubbleTimer = window.setTimeout(() => {
+        this.botBubble.classList.add("hidden");
+        this.bubbleTimer = null;
+      }, 4500);
+    }
+  }
+
+  private nextQuote() {
+    this.quoteIdx++;
+    this.showQuote();
   }
 }

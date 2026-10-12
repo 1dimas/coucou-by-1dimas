@@ -6,6 +6,24 @@ use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct CustomIntegration {
+    pub id: String,
+    pub name: String,
+    pub color: String,
+    #[serde(default)]
+    pub target: Option<String>,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Settings {
     pub sound_enabled: bool,
     pub sound_volume: f64,
@@ -20,6 +38,8 @@ pub struct Settings {
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
     pub model: String,
+    #[serde(default)]
+    pub custom_integrations: Vec<CustomIntegration>,
 }
 
 fn default_model() -> String {
@@ -43,6 +63,7 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            custom_integrations: Vec::new(),
         }
     }
 }

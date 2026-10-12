@@ -100,6 +100,42 @@ class SoundEngine {
     src.connect(master);
     src.start();
   }
+
+  thock() {
+    if (!this.enabled || !this.ctx || !this.master) return;
+    if (this.idleTimer != null) {
+      window.clearTimeout(this.idleTimer);
+      this.idleTimer = null;
+    }
+    if (this.ctx.state === "suspended") void this.ctx.resume();
+
+    try {
+      const t = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const filter = this.ctx.createBiquadFilter();
+
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(340, t);
+      osc.frequency.exponentialRampToValueAtTime(75, t + 0.045);
+
+      filter.type = "bandpass";
+      filter.frequency.setValueAtTime(460, t);
+      filter.Q.setValueAtTime(3.0, t);
+
+      gain.gain.setValueAtTime(0.65, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.055);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.master);
+
+      osc.start(t);
+      osc.stop(t + 0.06);
+    } catch {
+      /* ignore audio context errors */
+    }
+  }
 }
 
 export const Sound = new SoundEngine();
